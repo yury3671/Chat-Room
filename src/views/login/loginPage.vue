@@ -97,7 +97,7 @@ const register = () => {
     </ul>
   </div>
 </template>
-<style>
+<style scoped>
 .container {
   width: 100vw;
   height: 100vh;
