@@ -360,7 +360,18 @@ setMessageHandler(async (data) => {
 //发送消息
 const file = ref(null)
 const imageUrl = ref('')
+const isSend = ref(false)
 const sendMes = async () => {
+  if (file.value && !isSend.value) {
+    isSend.value = true
+    const res = await sendFile(chatStore.chatId, file.value)
+    console.log(res)
+    file.value = ''
+    isSend.value = false
+  }
+  //去除左右空格和换行符
+  console.log(msg.value)
+  msg.value = msg.value.trim().replace(/^[\s\n\r]+|[\s\n\r]+$/g, '')
   if (msg.value) {
     const base64Content = encodeBase64(msg.value)
     const data = {
@@ -379,12 +390,8 @@ const sendMes = async () => {
     })
     replyId.value = 0
     msg.value = ''
+    console.log(msg.value.length)
     inpRef.value.focus()
-  }
-  if (file.value) {
-    const res = await sendFile(chatStore.chatId, file.value)
-    console.log(res)
-    file.value = ''
   }
 }
 //发送文件消息
@@ -439,19 +446,27 @@ const jumpMsg = async (id) => {
   }
 }
 const chatsRef = ref([])
-const clickList1 = async (id) => {
-  pageRef.value.clear()
-
-  list1.value = []
-  list.value = oldList.value
-  search.value = 1
+const clickList = async (id) => {
   chatStore.setChatId(id)
-  await nextTick()
-  const index = list.value.findIndex((item) => item.relation_id === chatStore.chatId)
-  chatsRef.value[index].$el.scrollIntoView({
-    behavior: 'smooth',
-    block: 'center',
-  })
+  if (search.value === 2) {
+    pageRef.value.clear()
+    list1.value = []
+    list.value = oldList.value
+    search.value = 1
+    await nextTick()
+    const index = list.value.findIndex((item) => item.relation_id === chatStore.chatId)
+    chatsRef.value[index].$el.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    })
+  }
+}
+//处理回车
+const handleEnter = (event) => {
+  if (!event.shiftKey) {
+    sendMes()
+    event.preventDefault()
+  }
 }
 </script>
 
@@ -519,7 +534,7 @@ const clickList1 = async (id) => {
             "
             :msg="value.relation_type === 'friend' ? 1 : 4"
             :info="value"
-            @click="chatStore.setChatId(value.relation_id)"
+            @click="clickList(value.relation_id)"
             @contextmenu.prevent="handleMenu($event, 1, value.relation_id, value.is_pin)"
           ></friends-list>
           <div class="title" v-show="search === 2 && list1.length">群聊</div>
@@ -537,7 +552,7 @@ const clickList1 = async (id) => {
             "
             :msg="value.relation_type === 'friend' ? 2 : 3"
             :info="value"
-            @click="clickList1(value.relation_id)"
+            @click="clickList(value.relation_id)"
             @contextmenu.prevent="handleMenu($event, 1, value.relation_id, value.is_pin)"
           ></friends-list>
           <div class="apply" @click="searchRef.open(word)" v-show="search === 2">
@@ -646,12 +661,17 @@ const clickList1 = async (id) => {
               :rows="replyId ? 5 : 6"
               type="textarea"
               class="text"
-              @keyup.enter="sendMes"
+              @keydown.enter="handleEnter"
             />
           </div>
 
           <div class="bot">
-            <el-button :class="{ send: msg || file }" class="empty" @click="sendMes"
+            <el-button
+              :class="{
+                send: msg.trim().replace(/^[\s\n\r]+|[\s\n\r]+$/g, '') || file,
+              }"
+              class="empty"
+              @click="sendMes"
               >发送(S)</el-button
             >
           </div>

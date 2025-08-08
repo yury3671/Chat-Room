@@ -124,7 +124,7 @@ const panelRef = ref(null)
                 <div class="name">邀请</div>
               </div>
             </div>
-            <group-create ref="groupRef"></group-create>
+            <group-create ref="groupRef" @close="drawer = false"></group-create>
           </div>
 
           <div v-if="info.relation_type === 'group' && info.group_info.description">

@@ -58,7 +58,7 @@ const sendMes = async () => {
 <template>
   <div class="box">
     <person-info :flag="props.flag === 1 ? 1 : 2"></person-info>
-    <el-icon class="extra"><MoreFilled /></el-icon>
+
     <div class="remark">
       <span class="label" v-if="props.flag === 1">备注</span>
       <span class="label" v-else>我的本群昵称</span>

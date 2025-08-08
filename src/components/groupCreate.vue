@@ -4,6 +4,8 @@ import { Search, CircleCloseFilled } from '@element-plus/icons-vue'
 import { friendList, searchFriend } from '@/api/setting'
 import { groupInvite } from '@/api/group'
 import { useAccountStore } from '@/stores'
+import emitter from '@/assets/eventBus'
+const emit = defineEmits(['close'])
 const accountStore = useAccountStore()
 
 const dialogVisible = ref(false)
@@ -60,6 +62,9 @@ const finish = async () => {
     } else {
       const res = await groupInvite(accounts.value, relation_id.value)
       console.log(res)
+      dialogVisible.value = false
+      emit('close')
+      emitter.emit('updata', 1)
     }
   }
 }

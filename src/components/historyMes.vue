@@ -1,7 +1,7 @@
 <script setup>
 import { nextTick, ref } from 'vue'
 import { messageList, messageSearch } from '@/api/message'
-import { Close, Document, ChatSquare } from '@element-plus/icons-vue'
+import { Close, Document, ChatSquare, Download } from '@element-plus/icons-vue'
 import { infoGet } from '@/api/account'
 
 import { useAccountStore } from '@/stores'
@@ -133,10 +133,28 @@ const fileName = (fullName, num) => {
 }
 const openFile = (url) => {
   window.open(url, '_blank')
+  popoverVisible.value = false
 }
 const posMsg = (id) => {
   dialogVisible.value = false
   emit('jump', id)
+}
+const popoverVisible = ref(false)
+const clickX = ref(0)
+const clickY = ref(0)
+const handleContextMenu = (event) => {
+  // 判断点击的目标是否在预览图浮层内（通过 Element Plus 预览图的固定类名）
+  const isPreviewImage = event.target.closest('.el-image-viewer__wrapper')
+
+  if (isPreviewImage) {
+    // 获取点击位置相对于视口的坐标（clientX/clientY）
+    clickX.value = event.clientX + 140 > window.innerWidth ? event.clientX - 140 : event.clientX
+    clickY.value = event.clientY + 60 > window.innerHeight ? event.clientY - 60 : event.clientY
+    // 显示弹窗
+    popoverVisible.value = true
+    // 是预览图：不触发事件（或执行预览图自身的右键逻辑）
+    console.log('预览图右键，不触发菜单')
+  }
 }
 </script>
 
@@ -171,6 +189,29 @@ const posMsg = (id) => {
       </header>
       <el-scrollbar height="550" ref="scrollRef" @scroll="handleScroll">
         <div class="mes" v-for="item in list" :key="item.id">
+          <el-popover
+            v-model:visible="popoverVisible"
+            width="120"
+            placement="right"
+            trigger="contextmenu"
+            :show-arrow="false"
+            :popper-style="{
+              minWidth: '0px',
+              padding: 0,
+              border: 0,
+              position: 'absolute',
+              top: `${clickY}px`,
+              left: `${clickX}px`,
+            }"
+          >
+            <div class="menu">
+              <div class="opt" @click="openFile(item.msg_content)">
+                <el-icon><Download /></el-icon>
+
+                <span>下载</span>
+              </div>
+            </div>
+          </el-popover>
           <el-avatar shape="square" :src="item.account_avatar" />
           <div class="box">
             <div class="title">
@@ -187,13 +228,20 @@ const posMsg = (id) => {
               <div v-if="item.msg_type === 'text'">
                 {{ item.msg_content }}
               </div>
-              <img
+
+              <el-image
                 class="img"
+                :zoom-rate="1.2"
+                :max-scale="7"
+                :min-scale="0.2"
+                :preview-src-list="[item.msg_content]"
+                :initial-index="0"
                 :src="item.msg_content"
                 alt=""
                 v-else-if="
                   fileName(item.file_name, 2) === 'png' || fileName(item.file_name, 2) === 'jpg'
                 "
+                @contextmenu.prevent="handleContextMenu"
               />
               <div
                 class="file"
@@ -223,6 +271,18 @@ const posMsg = (id) => {
 </template>
 
 <style scoped>
+.opt {
+  text-align: center;
+  line-height: 30px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 7px;
+}
+.opt:hover {
+  background-color: rgba(128, 128, 128, 0.1);
+  cursor: pointer;
+}
 .chat {
   visibility: hidden;
 }

@@ -2,7 +2,7 @@
 import { nextTick, onMounted, ref } from 'vue'
 import { infoGet } from '@/api/account'
 import { useAccountStore } from '@/stores'
-import { Document } from '@element-plus/icons-vue'
+import { Document, Download } from '@element-plus/icons-vue'
 const emit = defineEmits(['showMenu', 'showPanel', 'jump'])
 const userAccount = useAccountStore()
 
@@ -41,11 +41,56 @@ const fileName = (fullName, num) => {
 }
 const openFile = (url) => {
   window.open(url, '_blank')
+  popoverVisible.value = false
+}
+const popoverVisible = ref(false)
+const clickX = ref(0)
+const clickY = ref(0)
+const handleContextMenu = (event) => {
+  // 判断点击的目标是否在预览图浮层内（通过 Element Plus 预览图的固定类名）
+  const isPreviewImage = event.target.closest('.el-image-viewer__wrapper')
+
+  if (!isPreviewImage) {
+    // 不是预览图：触发 showMenu 事件
+    emit('showMenu', event, 2, props.info)
+  } else {
+    // 获取点击位置相对于视口的坐标（clientX/clientY）
+    clickX.value = event.clientX + 140 > window.innerWidth ? event.clientX - 140 : event.clientX
+    clickY.value = event.clientY + 60 > window.innerHeight ? event.clientY - 60 : event.clientY
+    // 显示弹窗
+    popoverVisible.value = true
+    // 是预览图：不触发事件（或执行预览图自身的右键逻辑）
+    console.log('预览图右键，不触发菜单')
+  }
 }
 </script>
 
 <template>
   <div>
+    <el-popover
+      v-model:visible="popoverVisible"
+      width="120"
+      placement="right"
+      trigger="contextmenu"
+      :show-arrow="false"
+      :popper-style="{
+        minWidth: '0px',
+        padding: 0,
+        border: 0,
+        position: 'absolute',
+        top: `${clickY}px`,
+        left: `${clickX}px`,
+      }"
+    >
+      <div class="menu">
+        <div class="opt" @click="openFile(props.info.msg_content)">
+          <el-icon><Download /></el-icon>
+
+          <span>下载</span>
+        </div>
+      </div>
+    </el-popover>
+
     <div class="revoke" v-if="props.info.is_revoke">
       {{
         props.info.account_id === userAccount.id
@@ -66,15 +111,20 @@ const openFile = (url) => {
         >
           {{ props.info.msg_content }}
         </div>
-        <img
+        <el-image
           class="img"
+          :zoom-rate="1.2"
+          :max-scale="7"
+          :min-scale="0.2"
+          :preview-src-list="[props.info.msg_content]"
+          :initial-index="0"
           :src="props.info.msg_content"
           alt=""
           v-else-if="
             fileName(props.info.file_name, 2) === 'png' ||
             fileName(props.info.file_name, 2) === 'jpg'
           "
-          @contextmenu.prevent="emit('showMenu', $event, 2, props.info)"
+          @contextmenu.prevent="handleContextMenu"
         />
         <div
           class="file"
@@ -163,16 +213,23 @@ const openFile = (url) => {
         >
           {{ props.info.msg_content }}
         </div>
-        <img
+
+        <el-image
           class="img"
+          :zoom-rate="1.2"
+          :max-scale="7"
+          :min-scale="0.2"
+          :preview-src-list="[props.info.msg_content]"
+          :initial-index="0"
           :src="props.info.msg_content"
           alt=""
           v-else-if="
             fileName(props.info.file_name, 2) === 'png' ||
             fileName(props.info.file_name, 2) === 'jpg'
           "
-          @contextmenu.prevent="emit('showMenu', $event, 2, props.info)"
+          @contextmenu.prevent="handleContextMenu"
         />
+
         <div
           class="file"
           :style="{
@@ -268,6 +325,10 @@ const openFile = (url) => {
   max-height: 200px;
   border-radius: 5px;
 }
+.imgView {
+  max-width: 200px;
+  max-height: 200px;
+}
 .rlyImg {
   max-width: 100px;
   max-height: 100px;
@@ -314,6 +375,7 @@ const openFile = (url) => {
   border-radius: 10px;
   padding: 7px 10px;
   max-width: 800px;
+  white-space: pre-line;
   /* 自动换行 */
   word-wrap: break-word;
   /* 长单词断行 */

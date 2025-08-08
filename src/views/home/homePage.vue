@@ -67,6 +67,7 @@ const sendMes = async () => {
 
   // await showUpdate(chatStore.myId, true)
   chatStore.setChatId(chatStore.myId)
+  router.push('/')
 }
 </script>
 

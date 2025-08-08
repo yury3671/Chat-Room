@@ -87,7 +87,7 @@ const initMes = (list) => {
   }
 }
 const getMes = async () => {
-  const res = await messageList(props.info.relation_id, Date.now(), 1, 2)
+  const res = await messageList(props.info.relation_id, Date.now(), 1, 3)
 
   if (res.data.data.list.length) {
     initMes(res.data.data.list[0])
