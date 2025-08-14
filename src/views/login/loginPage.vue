@@ -117,6 +117,7 @@ const register = () => {
   text-shadow: 10px 10px 10px grey;
 }
 .bg-squares {
+  will-change: transform;
   list-style: none;
   position: absolute;
   top: 0;

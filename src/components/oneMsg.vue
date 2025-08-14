@@ -10,18 +10,6 @@ const props = defineProps({
   info: Object,
 })
 
-onMounted(async () => {
-  await getInfo()
-})
-const name = ref('')
-const getInfo = async () => {
-  if (props.info.nick_name && props.info.nick_name !== ' ') {
-    name.value = props.info.nick_name
-  } else {
-    const res = await infoGet(props.info.account_id)
-    name.value = res.data.data.info.name
-  }
-}
 const fileSize = (size) => {
   if (size < 1024 * 1024) {
     return (size / 1024).toFixed(1).toString() + 'K'

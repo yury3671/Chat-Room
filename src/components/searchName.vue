@@ -68,7 +68,7 @@ const pageChange = (num) => {
       ></el-input>
     </header>
     <div class="content" v-if="list">
-      <div class="item" v-for="(item, index) in list" :key="item.id">
+      <div class="item" v-for="item in list" :key="item.id">
         <div class="left">
           <el-avatar shape="square" :src="item.avatar" />
           <div class="name">{{ item.name }}</div>

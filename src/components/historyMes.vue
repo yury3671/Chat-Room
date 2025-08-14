@@ -70,50 +70,58 @@ const open = async (title, id) => {
   scrollToBottom()
 }
 
-const oldList = ref([])
-let oldTotal = 0
-let oldPage = 0
 defineExpose({ open })
-
-const search = async () => {
+function debounce(fn, delay) {
+  let timer = null
+  return function (...args) {
+    //清除之前定时器
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      fn.apply(this, args)
+    }, delay)
+  }
+}
+const search = debounce(async () => {
+  list.value = []
   if (content.value) {
     isSearch = true
-    oldList.value = list.value
-    oldPage = page
-    oldTotal = total
-    list.value = []
-    page = 1
-    await getMes()
-    await nextTick()
-    scrollToBottom()
   } else {
     isSearch = false
-    page = oldPage
-    total = oldTotal
-    list.value = oldList.value
   }
-}
-const recover = () => {
-  if (!content.value) {
-    search()
-  }
-}
-//监听滚动到顶部
-let scrollTimer = null
-const handleScroll = async () => {
-  clearTimeout(scrollTimer)
-  scrollTimer = setTimeout(async () => {
-    const scrollHeight = scrollRef.value.wrapRef.scrollHeight
-    const scrollTop = scrollRef.value.wrapRef.scrollTop
-    const clientHeight = scrollRef.value.wrapRef.clientHeight
+  page = 1
+  await getMes()
+  await nextTick()
+  scrollToBottom()
+}, 100)
 
-    // 距离顶部小于50px时触发加载
-    if (scrollTop < 30 && scrollHeight > clientHeight && page <= total) {
-      await getMes()
-      scrollRef.value.setScrollTop(30)
+//节流
+function throttle(fn, delay) {
+  let lastTime = 0 //记录上次时间
+  return function (...args) {
+    const now = Date.now()
+    if (now - lastTime >= delay) {
+      fn.apply(this, args) // 保持this指向和参数传递
+      lastTime = now // 更新上一次执行时间
     }
-  }, 200)
+  }
 }
+
+//监听滚动到顶部
+const handleScroll = throttle(async () => {
+  const wrap = scrollRef.value.wrapRef
+  const scrollHeight = wrap.scrollHeight
+  const scrollTop = wrap.scrollTop
+  const clientHeight = wrap.clientHeight
+
+  // 距离顶部小于30px时触发加载
+  if (scrollTop < 30 && scrollHeight > clientHeight && page <= total) {
+    await getMes()
+    //记录新旧内容高度差，保持视觉连贯性
+    const dHeight = wrap.scrollHeight - scrollHeight
+    scrollRef.value.setScrollTop(30 + dHeight)
+  }
+}, 100)
+
 const fileSize = (size) => {
   if (size < 1024 * 1024) {
     return (size / 1024).toFixed(1).toString() + 'K'
@@ -181,8 +189,7 @@ const handleContextMenu = (event) => {
             :prefix-icon="Search"
             placeholder="请输入关键字"
             clearable
-            @keyup.enter="search"
-            @change="recover"
+            @input="search"
             class="inp"
           ></el-input>
         </div>

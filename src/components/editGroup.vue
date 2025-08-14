@@ -86,7 +86,7 @@ const create = async () => {
     ElMessage.success('修改成功')
     emit('close')
   }
-  emitter.emit('updata', 1)
+  emitter.emit('updata')
   dialogVisible.value = false
 }
 </script>

@@ -31,9 +31,7 @@ const open = async (num, id, info) => {
       inpRef.value.focus()
     }, 100) // 可根据实际情况调整延迟时间
   })
-  const res = await friendList()
-  console.log(res)
-  list.value = res.data.data.list
+  await getInfo()
   if (num === 2) {
     relation_id.value = id
     existList.value = info
@@ -44,7 +42,11 @@ const open = async (num, id, info) => {
     })
   }
 }
-
+const getInfo = async () => {
+  const res = await friendList()
+  console.log(res)
+  list.value = res.data.data.list
+}
 defineExpose({ open })
 const name = ref('')
 //取消操作
@@ -64,27 +66,31 @@ const finish = async () => {
       console.log(res)
       dialogVisible.value = false
       emit('close')
-      emitter.emit('updata', 1)
+      emitter.emit('updata')
     }
   }
 }
 
-const change = (index, item) => {
-  if (!isDisabled(item)) {
+const change = (index, value) => {
+  if (!isDisabled(value)) {
     check.value[index] = !check.value[index]
     // console.log(check.value[index])
     if (check.value[index] === true) {
-      if (!members.value.includes(list.value[index])) {
-        members.value.push(list.value[index])
-      }
+      members.value.push(value)
     } else {
-      const pos = members.value.indexOf(list.value[index])
+      const pos = members.value.findIndex(
+        (item) => item.friend_info.account_id === value.friend_info.account_id,
+      )
       members.value.splice(pos, 1)
     }
   }
 }
-const del = (item, index) => {
-  const pos = list.value.indexOf(item)
+const del = (value, index) => {
+  const pos = list.value.findIndex(
+    (item) => item.friend_info.account_id === value.friend_info.account_id,
+  )
+  // const pos = list.value.indexOf(value)
+
   check.value[pos] = false
 
   members.value.splice(index, 1)
@@ -95,33 +101,43 @@ const isDisabled = (value) => {
   }
   return false
 }
+const isCheck = (value) => {
+  return members.value.some((item) => item.friend_info.account_id === value.friend_info.account_id)
+}
 //搜索好友
-const oldList = ref('')
-const search = async () => {
+function debounce(fn, delay) {
+  let timer = null
+  return function (...args) {
+    //清除之前定时器
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      fn.apply(this, args)
+    }, delay)
+  }
+}
+const search = debounce(async () => {
+  check.value = []
   if (name.value) {
-    oldList.value = list.value
     const res = await searchFriend(name.value)
     console.log(res)
     list.value = res.data.data.list.filter(
       (item) => item.friend_info.account_id !== accountStore.id,
     )
   } else {
-    console.log(oldList.value)
-    list.value = oldList.value
+    await getInfo()
   }
-  if (flag.value === 2) {
-    list.value.forEach((item, index) => {
+
+  list.value.forEach((item, index) => {
+    if (isCheck(item)) {
+      check.value[index] = true
+    }
+    if (flag.value === 2) {
       if (isDisabled(item)) {
         check.value[index] = true
       }
-    })
-  }
-}
-const recover = () => {
-  if (!name.value) {
-    search()
-  }
-}
+    }
+  })
+}, 100)
 </script>
 
 <template>
@@ -142,9 +158,8 @@ const recover = () => {
               :prefix-icon="Search"
               placeholder="请输入关键字"
               v-model="name"
-              @keyup.enter="search"
+              @input="search"
               clearable
-              @change="recover"
             ></el-input>
           </header>
 

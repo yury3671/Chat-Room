@@ -32,14 +32,13 @@ const chatStore = useChatStore()
 const accountStore = useAccountStore()
 const hisRef = ref(null)
 const panelRef = ref(null)
-let isLoad = false
+
 //滚动到最底部
 
 const scrollToBottom = () => {
   const scrollHeight = scrollRef.value.wrapRef.scrollHeight
 
   scrollRef.value.setScrollTop(scrollHeight)
-  isLoad = true
 }
 //高亮下标
 const activeId = ref(0)
@@ -110,12 +109,10 @@ const change = async () => {
   msgs.value = []
   page = 1
   total = 0
-  isLoad = false
   if (search.value === 2) {
     pageRef.value.clear()
     list1.value = []
-
-    list.value = oldList.value
+    await getInfo()
     search.value = 1
   }
   const target = list.value.find((item) => item.relation_id === chatStore.chatId)
@@ -146,31 +143,39 @@ const change = async () => {
   msg.value = ''
   inpRef.value.focus()
 }
+//节流
+function throttle(fn, delay) {
+  let lastTime = 0 //记录上次时间
+  return function (...args) {
+    const now = Date.now()
+    if (now - lastTime >= delay) {
+      fn.apply(this, args) // 保持this指向和参数传递
+      lastTime = now // 更新上一次执行时间
+    }
+  }
+}
 
 //监听滚动到顶部
-let scrollTimer = null
-const handleScroll = async () => {
-  clearTimeout(scrollTimer)
-  scrollTimer = setTimeout(async () => {
-    const scrollHeight = scrollRef.value.wrapRef.scrollHeight
-    const scrollTop = scrollRef.value.wrapRef.scrollTop
-    const clientHeight = scrollRef.value.wrapRef.clientHeight
+const handleScroll = throttle(async () => {
+  const wrap = scrollRef.value.wrapRef
+  const scrollHeight = wrap.scrollHeight
+  const scrollTop = wrap.scrollTop
+  const clientHeight = wrap.clientHeight
 
-    // 距离顶部小于50px时触发加载
-    if (scrollTop < 30 && scrollHeight > clientHeight && isLoad && page <= total) {
-      await getMes()
-      scrollRef.value.setScrollTop(30)
-    }
-  }, 200)
-}
+  // 距离顶部小于30px时触发加载
+  if (scrollTop < 30 && scrollHeight > clientHeight && page <= total) {
+    await getMes()
+    //记录新旧内容高度差，保持视觉连贯性
+    const dHeight = wrap.scrollHeight - scrollHeight
+    scrollRef.value.setScrollTop(30 + dHeight)
+  }
+}, 100)
 //搜索好友
 const search = ref(1)
 const word = ref('')
-const oldList = ref('')
 const list1 = ref([])
 const searchAll = async (name) => {
   if (name) {
-    oldList.value = list.value
     word.value = name
     console.log(name)
     const res = await searchFriend(name)
@@ -181,7 +186,7 @@ const searchAll = async (name) => {
     list1.value = res1.data.data.List
   } else {
     list1.value = []
-    list.value = oldList.value
+    getInfo()
     search.value = 1
   }
 }
@@ -201,10 +206,7 @@ watch(
     }
   },
 )
-emitter.on('updata', async (num) => {
-  if (!num) {
-    chatStore.setChatId('')
-  }
+emitter.on('updata', async () => {
   list.value = []
   await getInfo()
   if (chatStore.chatId) {
@@ -229,7 +231,7 @@ const flag = ref(0)
 const rlyMsg = ref({})
 const handleMenu = (e, num, data, isPin) => {
   flag.value = num
-
+  //列表菜单
   if (num === 1) {
     if (search.value === 1) {
       activeId.value = data
@@ -239,17 +241,19 @@ const handleMenu = (e, num, data, isPin) => {
         isTop.value = true
       }
 
-      // 获取点击位置相对于视口的坐标（clientX/clientY）
+      // 获取点击位置相对于视口的坐标（clientX/clientY）并防止溢出
       clickX.value = e.clientX + 140 > window.innerWidth ? e.clientX - 140 : e.clientX
       clickY.value = e.clientY + 60 > window.innerHeight ? e.clientY - 60 : e.clientY
       // 显示弹窗
       popoverVisible.value = true
     }
   } else {
+    //消息菜单
     rlyMsg.value = data
 
     activeId.value = data.id
     if (data.account_id === accountStore.id) {
+      //显示撤回消息
       const time = new Date(data.create_at)
       const now = new Date()
       if (now - time < 2 * 60 * 1000) {
@@ -258,7 +262,7 @@ const handleMenu = (e, num, data, isPin) => {
     } else {
       isBack.value = false
     }
-    // 获取点击位置相对于视口的坐标（clientX/clientY）
+    // 获取点击位置相对于视口的坐标（clientX/clientY）防止溢出
     clickX.value = e.clientX + 140 > window.innerWidth ? e.clientX - 140 : e.clientX
     clickY.value = e.clientY + 60 > window.innerHeight ? e.clientY - 60 : e.clientY
     // 显示弹窗
@@ -320,20 +324,23 @@ const encodeBase64 = (str) => {
 let target = null
 setMessageHandler(async (data) => {
   console.log('处理收到的消息', data)
+  //检查是否显示在列表里
   target = list.value.find((item) => item.relation_id === data.relation_id)
   if (!target) {
     await showUpdate(data.relation_id, true)
     await getInfo()
     target = list.value.find((item) => item.relation_id === data.relation_id)
   }
+  //设置最新消息
   target.newMsg = data
+  //撤回消息处理
   if (data.msg_type === 'revoke') {
     if (data.relation_id === chatStore.chatId) {
-      console.log(112333)
       const index = msgs.value.findIndex((item) => item.id === data.msg_id)
       msgs.value[index].is_revoke = true
     }
   } else {
+    //发送消息处理
     if (data.relation_id === chatStore.chatId) {
       msgs.value.push(data)
       await nextTick()
@@ -344,6 +351,7 @@ setMessageHandler(async (data) => {
       } else {
         target.msgNum = 1
       }
+      //列表上升
       if (target.is_pin) {
         const index = list.value.findIndex((item) => item.relation_id === data.relation_id) // 找到元素索引
         list.value.splice(index, 1) // 从原数组删除该元素（返回被删除的元素）
@@ -352,7 +360,7 @@ setMessageHandler(async (data) => {
         const index = list.value.findIndex((item) => item.relation_id === data.relation_id) // 找到元素索引
         list.value.splice(index, 1) // 从原数组删除该元素（返回被删除的元素）
         const insertIndex = list.value.findLastIndex((item) => item.is_pin === true)
-        list.value.splice(insertIndex, 0, target) // 从原数组删除该元素（返回被删除的元素）
+        list.value.splice(insertIndex, 0, target) // 插入到最后一个置顶元素之后
       }
     }
   }
@@ -360,7 +368,7 @@ setMessageHandler(async (data) => {
 //发送消息
 const file = ref(null)
 const imageUrl = ref('')
-const isSend = ref(false)
+const isSend = ref(false) //文件是否正在发送中
 const sendMes = async () => {
   if (file.value && !isSend.value) {
     isSend.value = true
@@ -395,7 +403,6 @@ const sendMes = async () => {
   }
 }
 //发送文件消息
-
 const selectFile = async (uploadFile) => {
   //只触发一次状态改变
   if (uploadFile.status !== 'ready') return
@@ -424,8 +431,10 @@ const msgRef = ref({})
 
 let targetEl
 const jumpMsg = async (id) => {
+  //通过id找到对应的消息Dom元素
   targetEl = msgRef.value[id]?.$el
   // index = msgs.value.findIndex((item) => item.id === id && !item.is_revoke)
+  //搜索范围是所有消息
   while (page <= total) {
     if (targetEl) {
       break
@@ -451,7 +460,7 @@ const clickList = async (id) => {
   if (search.value === 2) {
     pageRef.value.clear()
     list1.value = []
-    list.value = oldList.value
+    getInfo()
     search.value = 1
     await nextTick()
     const index = list.value.findIndex((item) => item.relation_id === chatStore.chatId)
@@ -463,9 +472,10 @@ const clickList = async (id) => {
 }
 //处理回车
 const handleEnter = (event) => {
+  //如果单纯回车
   if (!event.shiftKey) {
     sendMes()
-    event.preventDefault()
+    event.preventDefault() //不添加回车符
   }
 }
 </script>

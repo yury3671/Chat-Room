@@ -36,8 +36,6 @@ const open = async (e, id, dir) => {
   const res = await infoGet(id)
   console.log(res)
   info.value = res.data.data
-  console.log(friends.value)
-  console.log(id)
   const friend = friends.value.find((item) => item.friend_info.account_id === id)
   if (friend) {
     isFriend.value = true
@@ -54,7 +52,6 @@ const open = async (e, id, dir) => {
 defineExpose({ open })
 //发消息
 const sendMes = async () => {
-  console.log(relation_id.value)
   if (account_id.value === accountStore.id) {
     chatStore.setChatId(chatStore.myId)
   } else {

@@ -31,7 +31,7 @@ const info = computed(() => {
         <div class="name">{{ info.name }}</div>
         <div v-if="props.flag === 1">
           <el-icon size="20" color="#fb7373" v-if="info.gender === '女'"><Female /></el-icon>
-          <el-icon size="20" color="#10aeff" v-if="info.gender === '男'" e><Male /></el-icon>
+          <el-icon size="20" color="#10aeff" v-if="info.gender === '男'"><Male /></el-icon>
         </div>
       </div>
     </div>

@@ -37,7 +37,10 @@ const getInfo = async () => {
     list.value = res.data.data.List
   }
 }
-getInfo()
+onMounted(() => {
+  getInfo()
+})
+
 watch(route, () => {
   isApply.value = false
   search.value = 1
@@ -71,6 +74,7 @@ const change = async (index) => {
   }
   showInfo()
 }
+//跨组件通信
 provide('info', info)
 //搜索好友
 const searchRef = ref(null)
@@ -128,14 +132,14 @@ const update = () => {
     </template>
     <template #right>
       <friend-info
-        v-if="isInfo"
+        v-show="isInfo"
         :sign="sign"
         :flag="flag"
         :id="id"
         :nick="nick"
         @updata="update"
       ></friend-info>
-      <friend-apply v-if="isApply" @success="getInfo"></friend-apply>
+      <friend-apply v-show="isApply" @success="getInfo"></friend-apply>
     </template>
   </page-container>
 </template>

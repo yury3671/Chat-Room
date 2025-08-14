@@ -81,6 +81,7 @@ const register = async () => {
 }
 //返回登录
 const login = async () => {
+  clearInterval(timer)
   router.push('/login')
 }
 </script>

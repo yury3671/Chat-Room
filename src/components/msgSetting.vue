@@ -3,8 +3,10 @@ import { ref, nextTick } from 'vue'
 import { ArrowRight, Plus } from '@element-plus/icons-vue'
 import { groupMembers, groupQuit, groupDissolve } from '@/api/group'
 import { nicknameUpdate, friendDelete, pinUpdate } from '@/api/setting'
-import emitter from '@/assets/eventBus'
+import { useChatStore } from '@/stores'
 
+import emitter from '@/assets/eventBus'
+const chatStore = useChatStore()
 const drawer = ref(false)
 //删除联系人
 const dialogVisible = ref(false)
@@ -60,7 +62,7 @@ const setRemark = () => {
       list.value = res.data.data.List
     }
 
-    emitter.emit('updata', 1)
+    emitter.emit('updata')
   })
 }
 //退出群聊或删除联系人
@@ -76,15 +78,15 @@ const quit = async () => {
     console.log(res)
   }
   dialogVisible.value = false
-  emitter.emit('updata', 0)
-
+  chatStore.setChatId('')
+  emitter.emit('updata')
   drawer.value = false
 }
 const editRef = ref(null)
 //设置置顶
 const setTop = async () => {
   await pinUpdate(info.value.relation_id, isPin.value)
-  emitter.emit('updata', 1)
+  emitter.emit('updata')
 }
 const groupRef = ref(null)
 const panelRef = ref(null)

@@ -6,22 +6,25 @@ const name = ref('')
 const emit = defineEmits(['search'])
 const popoverRef = ref(null)
 const searchRef = ref()
-const search = () => {
-  if (name.value) {
-    emit('search', name.value)
+function debounce(fn, delay) {
+  let timer = null
+  return function (...args) {
+    //清除之前定时器
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      fn.apply(this, args)
+    }, delay)
   }
 }
+const search = debounce(() => {
+  emit('search', name.value)
+}, 100)
 const groupRef = ref()
 const create = () => {
   popoverRef.value.hide()
   groupRef.value.open(1)
 }
-//当输入框为空处理
-const handleChange = () => {
-  if (!name.value) {
-    emit('search', name.value)
-  }
-}
+
 const searchALL = () => {
   popoverRef.value.hide()
 
@@ -42,8 +45,7 @@ defineExpose({ clear })
           placeholder="请输入关键字"
           v-model="name"
           clearable
-          @keyup.enter="search"
-          @change="handleChange"
+          @input="search"
         >
         </el-input>
         <search-name ref="searchRef"></search-name>
